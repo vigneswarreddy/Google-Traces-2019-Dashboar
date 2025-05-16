@@ -105,24 +105,7 @@ docker-compose down
 
 
 
-Directory Structure
-<your-repo>/
-├── app/
-│   ├── wsgi.py                 # Flask backend
-│   ├── Dockerfile              # Flask container definition
-│   ├── requirements.txt        # Python dependencies
-│   ├── render_template/
-│   │   ├── index.html          # Main dashboard
-│   │   ├── log_analysis.html   # Log analysis dashboard
-│   ├── data/
-│   │   ├── google_cluster_data.csv  # Input data
-├── nginx/
-│   ├── nginx.conf              # NGINX configuration
-├── output/
-│   ├── server_log.txt          # Shared log file
-├── docker-compose.yml          # Docker Compose configuration
-├── data_processor.py           # Data processing script
-├── README.md                   # This file
+
 
 Technologies
 
