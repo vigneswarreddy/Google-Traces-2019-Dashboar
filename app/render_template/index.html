@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Dashboard for Google Traces 2019 with Docker and NGINX Load Balancer">
+    <title>Google Traces 2019 Dashboard</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1500px;
+            margin: 0 auto;
+            background: #1e293b;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header h2 {
+            font-size: 1rem;
+            font-weight: 400;
+            color: #94a3b8;
+            margin-top: 0.5rem;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        select, button {
+            padding: 0.75rem 1.25rem;
+            font-size: 1rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        select {
+            background: #334155;
+            color: #e2e8f0;
+            border: 1px solid #475569;
+        }
+
+        select:hover {
+            background: #475569;
+            transform: scale(1.05);
+        }
+
+        button {
+            background: linear-gradient(90deg, #8b5cf6, #ec4899);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+        }
+
+        button:hover {
+            background: linear-gradient(90deg, #7c3aed, #db2777);
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        button:focus, select:focus {
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.3);
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: #293548;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid #475569;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #8b5cf6, #ec4899);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .metric-card:hover::before {
+            opacity: 1;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .metric-card h3 {
+            font-size: 2.25rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-card p {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-container {
+            background: #293548;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .chart-container:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .chart-container h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chart-container h3 i {
+            color: #8b5cf6;
+        }
+
+        canvas {
+            max-width: 100%;
+        }
+
+        .recent-traces, .server-logs {
+            margin-top: 2rem;
+        }
+
+        .recent-traces h3, .server-logs h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .recent-traces h3 i, .server-logs h3 i {
+            color: #8b5cf6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+            background: #293548;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #475569;
+        }
+
+        th {
+            background: #334155;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        tr:nth-child(even) {
+            background: #1e293b;
+        }
+
+        tr:hover {
+            background: #475569;
+        }
+
+        .log-container {
+            background: #293548;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            border: 1px solid #475569;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            max-height: 450px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 0.75rem;
+            color: #e2e8f0;
+        }
+
+        .loading-spinner {
+            display: none;
+            border: 8px solid #334155;
+            border-top: 8px solid #8b5cf6;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        .error-message {
+            color: #f87171;
+            font-size: 0.875rem;
+            text-align: center;
+            margin: 1rem 0;
+            padding: 1rem;
+            border: 1px solid #ef4444;
+            border-radius: 0.5rem;
+            background: #3f2a44;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .concept-explainer {
+            margin-top: 2rem;
+        }
+
+        .concept-explainer h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .concept-explainer h3 i {
+            color: #8b5cf6;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #475569;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: #94a3b8;
+            border-radius: 0.5rem 0.5rem 0 0;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active, .tab:hover {
+            color: #e2e8f0;
+            background: #475569;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 1.5rem;
+            background: #293548;
+            border-radius: 0.75rem;
+            border: 1px solid #475569;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .expandable-section {
+            margin-bottom: 1rem;
+        }
+
+        .expandable-section h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            cursor: pointer;
+            padding: 1rem;
+            background: #334155;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .expandable-section h4:hover {
+            background: #475569;
+        }
+
+        .expandable-section h4::after {
+            content: '\f078';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            font-size: 0.75rem;
+            transition: transform 0.3s ease;
+        }
+
+        .expandable-section h4.expanded::after {
+            transform: rotate(180deg);
+        }
+
+        .expandable-content {
+            display: none;
+            padding: 1rem;
+            font-size: 0.875rem;
+            color: #d1d5db;
+            background: #1e293b;
+            border-radius: 0.5rem;
+            border: 1px solid #475569;
+            margin-top: 0.5rem;
+        }
+
+        .expandable-content.active {
+            display: block;
+        }
+
+        .expandable-content pre {
+            background: #0f172a;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            color: #e2e8f0;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                padding: 1.5rem;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1.5rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header-controls {
+                width: 100%;
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            select, button {
+                width: 100%;
+                padding: 0.875rem;
+            }
+
+            .metrics {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+            }
+
+            .charts {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-container {
+                padding: 1rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .header h2 {
+                font-size: 0.875rem;
+            }
+
+            .metric-card h3 {
+                font-size: 2rem;
+            }
+
+            .chart-container h3 {
+                font-size: 1.125rem;
+            }
+
+            table {
+                font-size: 0.75rem;
+            }
+
+            th, td {
+                padding: 0.75rem;
+            }
+
+            .tabs {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .tab {
+                padding: 0.75rem;
+                width: 100%;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .header h2 {
+                font-size: 0.75rem;
+            }
+
+            .metric-card h3 {
+                font-size: 1.75rem;
+            }
+
+            .chart-container h3 {
+                font-size: 1rem;
+            }
+
+            .concept-explainer h3 {
+                font-size: 1rem;
+            }
+
+            .expandable-section h4 {
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Google Traces 2019 Dashboard</h1>
+                <h2>Docker with NGINX Load Balancer</h2>
+            </div>
+            <div class="header-controls">
+                <select id="server-select" aria-label="Select server">
+                    <option value="all">Server: All</option>
+                    <option value="app1">app1</option>
+                    <option value="app2">app2</option>
+                    <option value="app3">app3</option>
+                </select>
+                <button id="refresh-btn" aria-label="Refresh data"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
+        </div>
+
+        <div class="error-message" id="error-message"></div>
+
+        <div class="metrics" id="metrics">
+            <div class="metric-card">
+                <h3 id="total-requests">0</h3>
+                <p>Total Requests</p>
+            </div>
+            <div class="metric-card">
+                <h3 id="avg-cpu">0</h3>
+                <p>Avg CPU Usage</p>
+            </div>
+            <div class="metric-card">
+                <h3 id="avg-memory">0</h3>
+                <p>Avg Memory Usage</p>
+            </div>
+        </div>
+
+        <div class="charts">
+            <div class="chart-container">
+                <h3><i class="fas fa-chart-pie"></i> Event Distribution</h3>
+                <canvas id="event-distribution-chart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3><i class="fas fa-chart-bar"></i> Server Load Distribution</h3>
+                <canvas id="server-load-chart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3><i class="fas fa-chart-line"></i> CPU & Memory Usage</h3>
+                <canvas id="cpu-memory-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="recent-traces">
+            <h3><i class="fas fa-table"></i> Recent Trace Data</h3>
+            <table id="traces-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Instance</th>
+                        <th>Type</th>
+                        <th>CPU</th>
+                        <th>Memory</th>
+                        <th>Event</th>
+                    </tr>
+                </thead>
+                <tbody id="traces-tbody"></tbody>
+            </table>
+        </div>
+
+        <div class="server-logs">
+            <h3><i class="fas fa-terminal"></i> Server Logs</h3>
+            <div class="log-container" id="log-container">
+                <div class="log-entry">No logs available.</div>
+            </div>
+        </div>
+
+        <div class="loading-spinner" id="loading-spinner"></div>
+
+        <div class="concept-explainer">
+            <h3><i class="fas fa-book"></i> Key Concepts</h3>
+            <div class="tabs">
+                <div class="tab active" data-tab="load-balancing">Load Balancing</div>
+                <div class="tab" data-tab="nginx-reverse-proxy">NGINX as Reverse Proxy</div>
+                <div class="tab" data-tab="docker-containerization">Docker Containerization</div>
+                <div class="tab" data-tab="resumable-downloads">Resumable Downloads</div>
+            </div>
+
+            <div class="tab-content active" id="load-balancing">
+                <div class="expandable-section">
+                    <h4>Definition and Purpose of Load Balancing</h4>
+                    <div class="expandable-content">
+                        <p>Load balancing distributes incoming network traffic across multiple servers to ensure no single server becomes overwhelmed, improving application reliability and performance.</p>
+                    </div>
+                </div>
+                <div class="expandable-section">
+                    <h4>Load Balancing Algorithms</h4>
+                    <div class="expandable-content">
+                        <p><strong>Round Robin:</strong> Distributes requests sequentially across servers.</p>
+                        <p><strong>Least Connections:</strong> Sends requests to the server with the fewest active connections.</p>
+                        <p><strong>IP Hash:</strong> Assigns requests based on the client’s IP address, ensuring consistent routing.</p>
+                    </div>
+                </div>
+                <div class="expandable-section">
+                    <h4>Key Benefits</h4>
+                    <div class="expandable-content">
+                        <p><strong>Scalability:</strong> Easily add servers to handle increased traffic.</p>
+                        <p><strong>Reliability:</strong> Redundancy ensures uptime during server failures.</p>
+                        <p><strong>Resource Optimization:</strong> Efficiently utilizes server resources.</p>
+                        <p><strong>Response Times:</strong> Reduces latency by distributing load effectively.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="nginx-reverse-proxy">
+                <div class="expandable-section">
+                    <h4>Definition and Functionality</h4>
+                    <div class="expandable-content">
+                        <p>NGINX as a reverse proxy accepts client requests and forwards them to backend servers, acting as an intermediary to enhance performance, security, and scalability.</p>
+                    </div>
+                </div>
+                <div class="expandable-section">
+                    <h4>Example NGINX Configuration</h4>
+                    <div class="expandable-content">
+                        <pre>
+upstream backend {
+    server app1:8080;
+    server app2:8080;
+    server app3:8080;
+}
+server {
+    listen 80;
+    location / {
+        proxy_pass http://backend;
+    }
+}
+                        </pre>
+                    </div>
+                </div>
+                <div class="expandable-section">
+                    <h4>Reverse Proxy Features</h4>
+                    <div class="expandable-content">
+                        <p><strong>Load Balancing:</strong> Distributes traffic across multiple servers.</p>
+                        <p><strong>SSL/TLS Termination:</strong> Handles encryption/decryption at the proxy.</p>
+                        <p><strong>Caching:</strong> Stores frequently requested content to reduce server load.</p>
+                        <p><strong>Request Filtering:</strong> Blocks malicious or unwanted requests.</p>
+                    </div>
+                </div>
+                <div class="expandable-section">
+                    <h4>Advantages of NGINX</h4>
+                    <div class="expandable-content">
+                        <p><strong>Event-Driven Architecture:</strong> Efficiently handles multiple connections.</p>
+                        <p><strong>Low Memory Footprint:</strong> Uses minimal resources.</p>
+                        <p><strong>High Concurrency:</strong> Supports thousands of simultaneous connections.</p>
+                        <p><strong>Configuration Flexibility:</strong> Easily customizable for various use cases.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="docker-containerization">
+                <div class="expandable-section">
+                    <h4>Definition and Benefits</h4>
+                    <div class="expandable-content">
+                        <p>Docker containerization packages applications and their dependencies into lightweight, portable containers, ensuring consistency across development, testing, and production environments.</p>
+                    </div>
+                </div>
+                <div class="expandable-section">
+                    <h4>Example Docker Compose Configuration</h4>
+                    <div class="expandable-content">
+                        <pre>
+version: '3'
+services:
+  app1:
+    image: my-app
+    ports:
+      - "8081:8080"
+  app2:
+    image: my-app
+    ports:
+      - "8082:8080"
+  nginx:
+    image: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+                        </pre>
+                    </div>
+                </div>
+                <div class="expandable-section">
+                    <h4>Containerization Benefits</h4>
+                    <div class="expandable-content">
+                        <p><strong>Consistent Environments:</strong> Identical behavior across all stages.</p>
+                        <p><strong>Isolation:</strong> Containers run independently, avoiding conflicts.</p>
+                        <p><strong>Lightweight Resource Usage:</strong> Less overhead than virtual machines.</p>
+                        <p><strong>Easy Scaling:</strong> Quickly deploy additional containers.</p>
+                    </div>
+                </div>
+                <div class="expandable-section">
+                    <h4>Container Scaling Strategies</h4>
+                    <div class="expandable-content">
+                        <p><strong>Horizontal Scaling:</strong> Add more containers to handle load.</p>
+                        <p><strong>Rapid Deployment:</strong> Quickly spin up new instances.</p>
+                        <p><strong>Self-Healing:</strong> Automatically replace failed containers.</p>
+                        <p><strong>Dynamic Allocation:</strong> Adjust resources based on demand.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="resumable-downloads">
+                <div class="expandable-section">
+                    <h4>Definition and Purpose</h4>
+                    <div class="expandable-content">
+                        <p>Resumable downloads allow users to pause and resume file downloads, improving reliability over unstable networks by leveraging HTTP Range Requests.</p>
+                    </div>
+                </div>
+                <div class="expandable-section">
+                    <h4>HTTP Range Requests</h4>
+                    <div class="expandable-content">
+                        <p>HTTP Range Requests allow clients to request specific byte ranges of a file. Example:</p>
+                        <pre>
+GET /file.zip HTTP/1.1
+Host: example.com
+Range: bytes=500-999
+                        </pre>
+                        <p>Server responds with a 206 Partial Content status and the requested bytes.</p>
+                    </div>
+                </div>
+                <div class="expandable-section">
+                    <h4>Benefits</h4>
+                    <div class="expandable-content">
+                        <p><strong>Improved User Experience:</strong> Users can resume interrupted downloads.</p>
+                        <p><strong>Network Resilience:</strong> Handles network disruptions gracefully.</p>
+                        <p><strong>Bandwidth Conservation:</strong> Avoids re-downloading entire files.</p>
+                    </div>
+                </div>
+                <div class="expandable-section">
+                    <h4>Flask Implementation</h4>
+                    <div class="expandable-content">
+                        <pre>
+from flask import Flask, send_file, request
+app = Flask(__name__)
+@app.route('/download')
+def download_file():
+    file_path = 'file.zip'
+    range_header = request.headers.get('Range', None)
+    if range_header:
+        # Parse range and serve partial content
+        return send_file(file_path, conditional=True)
+    return send_file(file_path)
+                        </pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const eventDistributionChart = new Chart(document.getElementById('event-distribution-chart'), {
+            type: 'pie',
+            data: {
+                labels: ['FAIL', 'SCHEDULE', 'FINISH', 'ENABLE', 'EVICT', 'LOST'],
+                datasets: [{
+                    data: [0, 0, 0, 0, 0, 0],
+                    backgroundColor: ['#f87171', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#6ee7b7']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'right', labels: { font: { size: 14, family: 'Poppins' } } },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.label}: ${context.raw}%`
+                        }
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
+
+        const serverLoadChart = new Chart(document.getElementById('server-load-chart'), {
+            type: 'bar',
+            data: {
+                labels: ['app1', 'app2', 'app3'],
+                datasets: [{
+                    label: 'Request Count',
+                    data: [0, 0, 0],
+                    backgroundColor: '#8b5cf6',
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        title: { display: true, text: 'Request Count', font: { size: 14, family: 'Poppins' } },
+                        grid: { color: '#475569' }
+                    },
+                    x: { 
+                        title: { display: true, text: 'Server', font: { size: 14, family: 'Poppins' } },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                }
+            }
+        });
+
+        const cpuMemoryChart = new Chart(document.getElementById('cpu-memory-chart'), {
+            type: 'scatter',
+            data: {
+                datasets: [
+                    {
+                        label: 'CPU Usage',
+                        data: [],
+                        backgroundColor: '#10b981',
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    },
+                    {
+                        label: 'Memory Usage',
+                        data: [],
+                        backgroundColor: '#f59e0b',
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { 
+                        type: 'linear', 
+                        position: 'bottom', 
+                        min: 0, 
+                        max: 0.2,
+                        title: { display: true, text: 'Usage', font: { size: 14, family: 'Poppins' } },
+                        grid: { color: '#475569' }
+                    },
+                    y: { display: false }
+                },
+                plugins: {
+                    legend: { position: 'top', labels: { font: { size: 14, family: 'Poppins' } } }
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                }
+            }
+        });
+
+        async function fetchWithErrorHandling(url, errorPrefix) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`${errorPrefix}: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        async function fetchDashboardData() {
+            const serverSelect = document.getElementById('server-select').value;
+            const spinner = document.getElementById('loading-spinner');
+            const errorMessage = document.getElementById('error-message');
+            const logContainer = document.getElementById('log-container');
+            spinner.style.display = 'block';
+            errorMessage.style.display = 'none';
+            errorMessage.textContent = '';
+
+            let errors = [];
+
+            try {
+                try {
+                    const metrics = await fetchWithErrorHandling(`/metrics?server=${serverSelect}`, 'Metrics fetch failed');
+                    document.getElementById('total-requests').textContent = metrics.total_requests || 0;
+                    document.getElementById('avg-cpu').textContent = metrics.avg_cpu || 0;
+                    document.getElementById('avg-memory').textContent = metrics.avg_memory || 0;
+                } catch (error) {
+                    errors.push(error.message);
+                }
+
+                try {
+                    const eventData = await fetchWithErrorHandling(`/event_distribution?server=${serverSelect}`, 'Event distribution fetch failed');
+                    eventDistributionChart.data.datasets[0].data = [
+                        eventData.FAIL || 0,
+                        eventData.SCHEDULE || 0,
+                        eventData.FINISH || 0,
+                        eventData.ENABLE || 0,
+                        eventData.EVICT || 0,
+                        eventData.LOST || 0
+                    ];
+                    eventDistributionChart.update();
+                } catch (error) {
+                    errors.push(error.message);
+                }
+
+                try {
+                    const serverLoadData = await fetchWithErrorHandling(`/server_load?server=${serverSelect}`, 'Server load fetch failed');
+                    serverLoadChart.data.datasets[0].data = [
+                        serverLoadData.app1 || 0,
+                        serverLoadData.app2 || 0,
+                        serverLoadData.app3 || 0
+                    ];
+                    serverLoadChart.update();
+                } catch (error) {
+                    errors.push(error.message);
+                }
+
+                try {
+                    const cpuMemoryData = await fetchWithErrorHandling(`/cpu_memory_usage?server=${serverSelect}`, 'CPU/Memory usage fetch failed');
+                    cpuMemoryChart.data.datasets[0].data = cpuMemoryData.cpu_usage.map(val => ({ x: val, y: 0 }));
+                    cpuMemoryChart.data.datasets[1].data = cpuMemoryData.memory_usage.map(val => ({ x: val, y: 0 }));
+                    cpuMemoryChart.update();
+                } catch (error) {
+                    errors.push(error.message);
+                }
+
+                try {
+                    const traces = await fetchWithErrorHandling(`/recent_traces?server=${serverSelect}`, 'Recent traces fetch failed');
+                    const tbody = document.getElementById('traces-tbody');
+                    tbody.innerHTML = '';
+                    traces.forEach(trace => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${trace.time}</td>
+                            <td>${trace.instance}</td>
+                            <td>${trace.type}</td>
+                            <td>${trace.cpu}</td>
+                            <td>${trace.memory}</td>
+                            <td>${trace.event}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                } catch (error) {
+                    errors.push(error.message);
+                }
+
+                try {
+                    const logs = await fetchWithErrorHandling(`/logs?server=${serverSelect}`, 'Logs fetch failed');
+                    logContainer.innerHTML = '';
+                    if (logs.length > 0) {
+                        logs.forEach(log => {
+                            const logEntry = document.createElement('div');
+                            logEntry.className = 'log-entry';
+                            logEntry.textContent = log;
+                            logContainer.appendChild(logEntry);
+                        });
+                    } else {
+                        const logEntry = document.createElement('div');
+                        logEntry.className = 'log-entry';
+                        logEntry.textContent = 'No logs available.';
+                        logContainer.appendChild(logEntry);
+                    }
+                } catch (error) {
+                    errors.push(error.message);
+                }
+
+                if (errors.length > 0) {
+                    errorMessage.textContent = `Some data failed to load: ${errors.join('; ')}`;
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+
+        // Variable to store the interval ID
+        let refreshInterval;
+
+        // Function to start the refresh interval
+        function startRefreshInterval() {
+            // Clear any existing interval
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            // Set new interval to refresh every 1 minute (60,000 ms)
+            refreshInterval = setInterval(fetchDashboardData, 1000);
+        }
+
+        // Initial data fetch
+        fetchDashboardData();
+
+        // Start the refresh interval
+        startRefreshInterval();
+
+        // Event listener for manual refresh button
+        document.getElementById('refresh-btn').addEventListener('click', () => {
+            fetchDashboardData();
+            startRefreshInterval(); // Reset the interval on manual refresh
+        });
+
+        // Event listener for server selection change
+        document.getElementById('server-select').addEventListener('change', () => {
+            fetchDashboardData();
+            startRefreshInterval(); // Reset the interval on server change
+        });
+
+        // Focus and blur effects for buttons and select
+        document.querySelectorAll('button, select').forEach(el => {
+            el.addEventListener('focus', () => {
+                el.style.boxShadow = '0 0 0 4px rgba(139, 92, 246, 0.3)';
+            });
+            el.addEventListener('blur', () => {
+                el.style.boxShadow = 'none';
+            });
+        });
+
+        // Tab navigation
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Expandable sections
+        document.querySelectorAll('.expandable-section h4').forEach(header => {
+            header.addEventListener('click', () => {
+                const content = header.nextElementSibling;
+                const isExpanded = content.classList.contains('active');
+                content.classList.toggle('active');
+                header.classList.toggle('expanded');
+                header.setAttribute('aria-expanded', !isExpanded);
+            });
+        });
+
+        // Accessibility for expandable sections
+        document.querySelectorAll('.expandable-section h4').forEach(header => {
+            header.setAttribute('aria-expanded', 'false');
+            header.setAttribute('tabindex', '0');
+        });
+
+        document.querySelectorAll('.expandable-section h4').forEach(header => {
+            header.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    header.click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
