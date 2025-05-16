@@ -116,15 +116,3 @@ Containerization: Docker, Docker Compose
 Data Processing: Pandas, Requests, JSON
 Dependencies: Flask (2.0.1), Flask-Limiter (3.5.0), Pandas (1.5.3), NumPy (1.23.5), Redis (4.5.4, unused), Requests (2.28.1), Werkzeug (2.0.3)
 
-Contributing
-
-Fork the repository.
-Create a feature branch (git checkout -b feature/your-feature).
-Commit changes (git commit -m "Add your feature").
-Push to the branch (git push origin feature/your-feature).
-Open a pull request.
-
-License
-This project is licensed under the MIT License. See the LICENSE file for details.
-Contact
-For issues or questions, open an issue on GitHub or contact [].
