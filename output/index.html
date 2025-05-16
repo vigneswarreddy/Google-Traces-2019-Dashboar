@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Data Analysis </title>
+    <style>
+        :root {
+            --primary: #8B5CF6; /* Vibrant purple */
+            --secondary: #2DD4BF; /* Neon teal */
+            --accent: #F472B6; /* Bright pink */
+            --background: #1A1A2E; /* Dark navy */
+            --card-bg: rgba(30, 30, 50, 0.7); /* Glassmorphism */
+            --text-primary: #E2E8F0; /* Light gray */
+            --text-secondary: #94A3B8; /* Muted gray */
+            --border: rgba(255, 255, 255, 0.1);
+            --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+            --glow: 0 0 10px rgba(139, 92, 246, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.1), transparent 70%);
+            z-index: -1;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 2.5rem;
+            text-shadow: var(--glow);
+            animation: fadeIn 1s ease-in;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 2.5rem 0 1.5rem;
+            position: relative;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: var(--gradient);
+            border-radius: 2px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .error {
+            color: var(--accent);
+            text-align: center;
+            font-size: 1.1rem;
+            margin: 1.5rem 0;
+            background: rgba(244, 114, 182, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            margin: 2rem 0;
+            box-shadow: var(--glow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        table:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2), var(--glow);
+        }
+
+        th, td {
+            padding: 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--gradient);
+            color: white;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr {
+            transition: background 0.3s ease;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        tr:hover {
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        canvas {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: var(--glow);
+            margin: 2rem 0;
+            max-width: 100%;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            transition: transform 0.3s ease;
+        }
+
+        canvas:hover {
+            transform: translateY(-4px);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.8rem 2rem;
+            background: var(--gradient);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), var(--glow);
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+
+            h2 {
+                font-size: 1.6rem;
+            }
+
+            th, td {
+                font-size: 0.85rem;
+                padding: 0.8rem;
+            }
+
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+
+            canvas {
+                padding: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 1rem;
+            }
+
+            .container {
+                padding: 0;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            h2 {
+                font-size: 1.3rem;
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .chart-container {
+            position: relative;
+            margin: 2rem 0;
+            animation: fadeIn 0.7s ease-in;
+        }
+    </style>
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts for Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>Log Data Analysis </h1>
+        
+        <div id="error" class="error"></div>
+
+        <h2>Requests per App</h2>
+        <table id="requestsPerApp">
+            <thead>
+                <tr>
+                    <th>App</th>
+                    <th>Request Count</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <h2>Handlers per App</h2>
+        <table id="handlersPerApp">
+            <thead>
+                <tr>
+                    <th>App</th>
+                    <th>Handler IDs</th>
+                    <th>Handler Count</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <h2>Event Types</h2>
+        <table id="eventTypes">
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <h2>Average CPU and Memory Utilization per App</h2>
+        <div class="chart-container">
+            <canvas id="resourceUtilizationChart"></canvas>
+        </div>
+
+        <h2>Priority Distribution</h2>
+        <div class="chart-container">
+            <canvas id="priorityChart"></canvas>
+        </div>
+
+        <h2>Payload Details</h2>
+        <table id="payloadDetails">
+            <thead>
+                <tr>
+                    <th>App</th>
+                    <th>Collection ID</th>
+                    <th>Event</th>
+                    <th>Priority</th>
+                    <th>CPUs</th>
+                    <th>Memory</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        // Update Chart.js defaults to match theme
+        Chart.defaults.font.family = 'Inter, sans-serif';
+        Chart.defaults.color = '#E2E8F0';
+        Chart.defaults.plugins.title.font = { size: 18, weight: '700' };
+        Chart.defaults.plugins.legend.labels.font = { size: 14 };
+
+        function renderCharts(logs) {
+            // Bar Chart: Average CPU and Memory Utilization per App
+            const apps = ['app1', 'app2', 'app3'];
+            const avgCpu = apps.map(app => {
+                const appLogs = logs.filter(log => log.app === app);
+                const totalCpu = appLogs.reduce((sum, log) => sum + log.payload.cpus, 0);
+                return appLogs.length ? (totalCpu / appLogs.length).toFixed(6) : 0;
+            });
+            const avgMemory = apps.map(app => {
+                const appLogs = logs.filter(log => log.app === app);
+                const totalMemory = appLogs.reduce((sum, log) => sum + log.payload.memory, 0);
+                return appLogs.length ? (totalMemory / appLogs.length).toFixed(6) : 0;
+            });
+
+            // Destroy previous chart instance if it exists
+            if (window.resourceUtilizationChart && typeof window.resourceUtilizationChart.destroy === 'function') {
+                window.resourceUtilizationChart.destroy();
+            }
+            window.resourceUtilizationChart = new Chart(document.getElementById('resourceUtilizationChart'), {
+                type: 'bar',
+                data: {
+                    labels: apps,
+                    datasets: [
+                        {
+                            label: 'Average CPU',
+                            data: avgCpu,
+                            backgroundColor: ctx => {
+                                const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
+                                gradient.addColorStop(0, 'rgba(139, 92, 246, 0.8)');
+                                gradient.addColorStop(1, 'rgba(139, 92, 246, 0.2)');
+                                return gradient;
+                            },
+                            borderColor: 'rgba(139, 92, 246, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Average Memory',
+                            data: avgMemory,
+                            backgroundColor: ctx => {
+                                const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
+                                gradient.addColorStop(0, 'rgba(45, 212, 191, 0.8)');
+                                gradient.addColorStop(1, 'rgba(45, 212, 191, 0.2)');
+                                return gradient;
+                            },
+                            borderColor: 'rgba(45, 212, 191, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            title: { display: true, text: 'Value', color: '#E2E8F0' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        x: { 
+                            title: { display: true, text: 'App', color: '#E2E8F0' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    },
+                    plugins: { 
+                        title: { 
+                            display: true, 
+                            text: 'Average CPU and Memory Utilization per App',
+                            padding: { top: 10, bottom: 20 },
+                            color: '#E2E8F0'
+                        } 
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+
+            // Histogram: Priority Distribution
+            const priorities = logs.map(log => log.payload.priority);
+            const bins = 10;
+            const minPriority = Math.min(...priorities);
+            const maxPriority = Math.max(...priorities);
+            const binWidth = (maxPriority - minPriority) / bins;
+            const histogramData = Array(bins).fill(0);
+            priorities.forEach(priority => {
+                const binIndex = Math.min(
+                    Math.floor((priority - minPriority) / binWidth),
+                    bins - 1
+                );
+                histogramData[binIndex]++;
+            });
+
+            // Destroy previous chart instance if it exists
+            if (window.priorityChart && typeof window.priorityChart.destroy === 'function') {
+                window.priorityChart.destroy();
+            }
+            window.priorityChart = new Chart(document.getElementById('priorityChart'), {
+                type: 'bar',
+                data: {
+                    labels: Array.from({ length: bins }, (_, i) => {
+                        const start = (minPriority + i * binWidth).toFixed(1);
+                        const end = (minPriority + (i + 1) * binWidth).toFixed(1);
+                        return `${start}-${end}`;
+                    }),
+                    datasets: [{
+                        label: 'Request Count',
+                        data: histogramData,
+                        backgroundColor: ctx => {
+                            const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
+                            gradient.addColorStop(0, 'rgba(244, 114, 182, 0.8)');
+                            gradient.addColorStop(1, 'rgba(244, 114, 182, 0.2)');
+                            return gradient;
+                        },
+                        borderColor: 'rgba(244, 114, 182, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            title: { display: true, text: 'Count', color: '#E2E8F0' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        x: { 
+                            title: { display: true, text: 'Priority Range', color: '#E2E8F0' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    },
+                    plugins: { 
+                        title: { 
+                            display: true, 
+                            text: 'Priority Distribution',
+                            padding: { top: 10, bottom: 20 },
+                            color: '#E2E8F0'
+                        } 
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+        }
+
+        function loadData() {
+            // Clear previous content
+            document.querySelector('#error').textContent = '';
+            document.querySelector('#requestsPerApp tbody').innerHTML = '';
+            document.querySelector('#handlersPerApp tbody').innerHTML = '';
+            document.querySelector('#eventTypes tbody').innerHTML = '';
+            document.querySelector('#payloadDetails tbody').innerHTML = '';
+
+            // Fetch log data from server_log.txt with cache-busting
+            fetch(`server_log.txt?ts=${new Date().getTime()}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch server_log.txt: ${response.status} ${response.statusText}`);
+                    }
+                    return response.text();
+                })
+                .then(logData => {
+                    if (!logData.trim()) {
+                        throw new Error('server_log.txt is empty');
+                    }
+                    // Parse log data, only process lines starting with Payload
+                    const logs = logData.trim().split('\n').map((line, index) => {
+                        try {
+                            const parts = line.split(' - ');
+                            if (parts.length < 4) {
+                                console.warn(`Skipping malformed line ${index + 1}: ${line}`);
+                                return null;
+                            }
+                            if (!parts[3].startsWith('Payload: ')) {
+                                return null;
+                            }
+                            const app = parts[1].split(': ')[1];
+                            const handler = parts[2].split(': ')[1];
+                            const payload = JSON.parse(parts[3].replace('Payload: ', ''));
+                            const event = payload.event;
+                            return { app, handler, event, payload };
+                        } catch (e) {
+                            console.warn(`Error parsing line ${index + 1}: ${e.message}`);
+                            return null;
+                        }
+                    }).filter(log => log !== null);
+
+                    if (logs.length === 0) {
+                        throw new Error('No valid payload entries found in server_log.txt');
+                    }
+
+                    // Analyze requests per app
+                    const requestsPerApp = {};
+                    logs.forEach(log => {
+                        requestsPerApp[log.app] = (requestsPerApp[log.app] || 0) + 1;
+                    });
+
+                    const requestsTable = document.querySelector('#requestsPerApp tbody');
+                    Object.entries(requestsPerApp).forEach(([app, count]) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${app}</td><td>${count}</td>`;
+                        requestsTable.appendChild(row);
+                    });
+
+                    // Analyze handlers per app
+                    const handlersPerApp = {};
+                    logs.forEach(log => {
+                        if (!handlersPerApp[log.app]) {
+                            handlersPerApp[log.app] = new Set();
+                        }
+                        handlersPerApp[log.app].add(log.handler);
+                    });
+
+                    const handlersTable = document.querySelector('#handlersPerApp tbody');
+                    Object.entries(handlersPerApp).forEach(([app, handlers]) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${app}</td><td>${[...handlers].join(', ')}</td><td>${handlers.size}</td>`;
+                        handlersTable.appendChild(row);
+                    });
+
+                    // Analyze event types
+                    const eventTypes = {};
+                    logs.forEach(log => {
+                        if (log.event) {
+                            eventTypes[log.event] = (eventTypes[log.event] || 0) + 1;
+                        }
+                    });
+
+                    const eventTable = document.querySelector('#eventTypes tbody');
+                    Object.entries(eventTypes).forEach(([event, count]) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${event}</td><td>${count}</td>`;
+                        eventTable.appendChild(row);
+                    });
+
+                    // Payload details
+                    const payloadTable = document.querySelector('#payloadDetails tbody');
+                    logs.forEach(log => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${log.app}</td>
+                            <td>${log.payload.collection_id}</td>
+                            <td>${log.payload.event}</td>
+                            <td>${log.payload.priority}</td>
+                            <td>${log.payload.cpus}</td>
+                            <td>${log.payload.memory}</td>
+                        `;
+                        payloadTable.appendChild(row);
+                    });
+
+                    // Render charts
+                    renderCharts(logs);
+                })
+                .catch(error => {
+                    const errorDiv = document.querySelector('#error');
+                    errorDiv.textContent = `Error: ${error.message}. Please ensure server_log.txt is in the same directory and contains valid payload entries.`;
+                    console.error('Fetch error:', error);
+                });
+        }
+
+        // Initial load
+        loadData();
+
+        // Refresh every 10 seconds
+        setInterval(loadData, 10000);
+    </script>
+</body>
+</html>
